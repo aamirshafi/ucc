@@ -43,6 +43,10 @@ ucc_base_coll_alg_info_t
             {.id   = UCC_TL_UCP_ALLTOALL_ALG_ONESIDED,
              .name = "onesided",
              .desc = "naive, linear one-sided implementation"},
+        [UCC_TL_UCP_ALLTOALL_ALG_PAIRWISE_CA] =
+            {.id   = UCC_TL_UCP_ALLTOALL_ALG_PAIRWISE_CA,
+             .name = "pairwise_ca",
+             .desc = "pairwise two-sided implementation with congestion avoidance"},
         [UCC_TL_UCP_ALLTOALL_ALG_LAST] = {.id = 0, .name = NULL, .desc = NULL}};
 
 ucc_status_t ucc_tl_ucp_alltoall_init(ucc_tl_ucp_task_t *task)

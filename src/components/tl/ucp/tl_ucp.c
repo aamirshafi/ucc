@@ -48,6 +48,16 @@ ucc_config_field_t ucc_tl_ucp_lib_config_table[] = {
      ucc_offsetof(ucc_tl_ucp_lib_config_t, alltoallv_pairwise_num_posts),
      UCC_CONFIG_TYPE_ULUNITS},
 
+    {"ALLTOALL_PAIRWISE_CA_RATE", "1",
+     "BW of NIC in MBs",
+     ucc_offsetof(ucc_tl_ucp_lib_config_t, alltoall_pairwise_ca_rate),
+     UCC_CONFIG_TYPE_ULUNITS},
+
+    {"ALLTOALL_PAIRWISE_CA_PPN", "1",
+     "Number of processes per node",
+     ucc_offsetof(ucc_tl_ucp_lib_config_t, alltoall_pairwise_ca_ppn),
+     UCC_CONFIG_TYPE_ULUNITS},
+
 /* TODO: add radix to config once it's fully supported by the algorithm
     {"ALLTOALLV_HYBRID_RADIX", "2",
      "Radix of the Hybrid Alltoallv algorithm",
