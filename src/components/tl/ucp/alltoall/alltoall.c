@@ -86,7 +86,7 @@ ucc_status_t ucc_tl_ucp_alltoall_pairwise_ca_init(ucc_base_coll_args_t *coll_arg
     ALLTOALL_TASK_CHECK(coll_args->args, tl_team);
     task                 = ucc_tl_ucp_init_task(coll_args, team);
     *task_h              = &task->super;
-    status = ucc_tl_ucp_alltoall_pairwise_init_common(task);
+    status = ucc_tl_ucp_alltoall_pairwise_ca_init_common(task);
 out:
     return status;
 }

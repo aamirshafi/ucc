@@ -27,6 +27,7 @@ static inline ucc_rank_t get_send_peer(ucc_rank_t rank, ucc_rank_t size,
     return (rank - step + size) % size;
 }
 
+#if 0
 static ucc_rank_t get_num_posts(const ucc_tl_ucp_team_t *team,
                                 const ucc_coll_args_t *args)
 {
@@ -49,6 +50,40 @@ static ucc_rank_t get_num_posts(const ucc_tl_ucp_team_t *team,
     posts = (posts > tsize || posts == 0) ? tsize: posts;
     return posts;
 }
+#endif
+
+static ucc_rank_t get_num_tokens(const ucc_tl_ucp_team_t *team,
+                                 const ucc_coll_args_t *args)
+{
+    unsigned long tokens;
+    ucc_rank_t    grank = UCC_TL_TEAM_RANK(team);
+    ucc_rank_t    gsize = UCC_TL_TEAM_SIZE(team);
+    size_t        data_size_per_process;
+    int           ppn = 1;
+    unsigned long data_transfer_ceiling = 12500; // units: MB/s. assuming 100 Gb/s NIC.
+    unsigned long data_size;
+
+    //data_size_per_process = (size_t)(TASK_ARGS(task).src.info.count / gsize) *
+    //                        ucc_dt_size(TASK_ARGS(task).src.info.datatype);
+
+    data_size_per_process = (size_t)(args->src.info.count / gsize) *
+                            ucc_dt_size(args->src.info.datatype);
+
+    // amount of incoming/outgoing data (in bytes) per node
+    // assuming message to self with not use network bw
+    data_size = data_size_per_process * (gsize - 1) * ppn; 
+
+    //converting MBs to Bs first
+    tokens = (data_transfer_ceiling * 1000 * 1000) / data_size;
+
+    if (grank == 0)
+        tl_debug(UCC_TL_TEAM_LIB(team), "net_bw=%ld, data_size =%ld, tokens=%ld\n", 
+		         (data_transfer_ceiling * 1000 * 1000), data_size, tokens);
+
+    tokens = (tokens > gsize || tokens == 0) ? gsize: tokens;
+
+    return tokens;
+}
 
 void ucc_tl_ucp_alltoall_pairwise_ca_progress(ucc_coll_task_t *coll_task)
 {
@@ -64,9 +99,11 @@ void ucc_tl_ucp_alltoall_pairwise_ca_progress(ucc_coll_task_t *coll_task)
     ucc_rank_t         peer, nreqs;
     size_t             data_size;
 
-    nreqs     = get_num_posts(team, &TASK_ARGS(task));
+    nreqs     = get_num_tokens(team, &TASK_ARGS(task));
+
     data_size = (size_t)(TASK_ARGS(task).src.info.count / gsize) *
                 ucc_dt_size(TASK_ARGS(task).src.info.datatype);
+
     while ((task->tagged.send_posted < gsize ||
             task->tagged.recv_posted < gsize) &&
            (polls++ < task->n_polls)) {
@@ -78,6 +115,10 @@ void ucc_tl_ucp_alltoall_pairwise_ca_progress(ucc_coll_task_t *coll_task)
             UCPCHECK_GOTO(ucc_tl_ucp_recv_nb((void *)(rbuf + peer * data_size),
                                              data_size, rmem, peer, team, task),
                           task, out);
+	    if (grank == 0)
+                tl_debug(UCC_TL_TEAM_LIB(team), "%d of %d: peer=%d, nreqs=%d, "
+	    	         "data_size=%ld, count=%ld\n", grank, gsize, peer, nreqs, 
+		          data_size, TASK_ARGS(task).src.info.count);
             polls = 0;
         }
         while ((task->tagged.send_posted < gsize) &&
@@ -119,6 +160,9 @@ ucc_status_t ucc_tl_ucp_alltoall_pairwise_ca_init_common(ucc_tl_ucp_task_t *task
     ucc_tl_ucp_team_t *team = TASK_TEAM(task);
     ucc_coll_args_t   *args = &TASK_ARGS(task);
     size_t data_size;
+
+    //printf("ucc_tl_ucp_alltoall_pairwise_ca_init_common is called. \n"); fflush(stdout);
+    //tl_debug(UCC_TL_TEAM_LIB(team), "ucc_tl_ucp_alltoall_pairwise_ca_init_common is called.");
 
     task->super.post     = ucc_tl_ucp_alltoall_pairwise_ca_start;
     task->super.progress = ucc_tl_ucp_alltoall_pairwise_ca_progress;
